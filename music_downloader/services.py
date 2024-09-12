@@ -15,7 +15,7 @@ class MusicSearchService:
     
     def __init__(self):
         self.client_id = config.CLIENT_ID
-        self.secret = config.SECRET
+        self.secret = config.CLIENT_SECRET
         self.auth_manager = SpotifyClientCredentials(client_id=self.client_id, client_secret=self.secret)
         self.spotify = spotipy.Spotify(auth_manager=self.auth_manager)
     
