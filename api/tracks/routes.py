@@ -1,15 +1,14 @@
+from typing import Annotated
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from requests.exceptions import HTTPError
-from typing import Annotated
 from sqlalchemy.orm import Session
 
-import config
-from .services import MusicSearchService
 from accounts.models import User
 from accounts.services import JWTService
-
+import config
+from .services import MusicSearchService
 
 app = FastAPI()
 music_service = MusicSearchService()
@@ -68,10 +67,10 @@ def detail_entity(entity_type: str, uri: str):
         )
 
 @app.post('/download-track/', tags=['tracks'])
-def load_track(track_uri: str, db: Session = Depends(config.get_db)):
+def load_track(track_uri: str, current_user: Annotated[User, Depends(JWTService().get_current_user)], db: Session = Depends(config.get_db)):
     return f'{config.BASE_URL}{music_service.listen_track(track_uri, db)}'
     
 
 @app.get('/media/{track_id}', tags=['tracks'])
-def get_track(track_id: str):
+def get_track(track_id: str, current_user: Annotated[User, Depends(JWTService().get_current_user)]):
     return FileResponse(f'{config.MEDIA_DIR}\{track_id}.mp3')
