@@ -34,10 +34,16 @@ As FastAPI was used to this project, endpoints documentation provided automatica
 ## Installation
 
 ```bash
-git clone https://github.com/your-username/music-api.git
+git clone https://github.com/lunqwe/music-api.git
 cd music-api
 pip install -r requirements.txt
 ```
+# Run
+```bash
+cd api
+ uvicorn main:app --reload
+```
+
 # Disclaimer
 This tool is for educational purposes only.
 
