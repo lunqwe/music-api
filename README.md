@@ -29,6 +29,7 @@ As FastAPI was used to this project, endpoints documentation provided automatica
 - pytubefix 6.16.2
 - PyJWT 2.9.0
 - Alembic 1.13.2
+- spotipy 2.24.0
 
 ## Installation
 
