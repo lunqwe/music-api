@@ -2,7 +2,11 @@ import os
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from pytubefix import YouTube, Search
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+
 import config
+from .models import Track
 
 
 class MusicSearchService:
@@ -42,26 +46,21 @@ class MusicSearchService:
         return video_url
 
     # downloading video audio from youtube
-    def download_track(self, url):
+    def download_track(self, track_id: str, url: str):
         yt = YouTube(url)
-        audio_title = yt.title
-
-        # filename = f"{audio_title}.mp3"
-        full_path = os.path.join(config.BASE_DIR, f'{audio_title}.mp3')
-
-        print(f'Downloading to: {full_path}')
-
-        file = yt.streams.get_audio_only().download()
-        print(file)
+        downloaded_file = yt.streams.get_audio_only().download(output_path=config.MEDIA_DIR, filename=track_id, mp3=True)
+        if downloaded_file:
+            return downloaded_file
         
         
     def search_track(self, query: str) -> list[dict]:
         response = self.spotify.search(query, type='track')
         tracks = response.get('tracks', {}).get('items', [])
-        
+            
         result = []
         for track in tracks:
             track_data = {
+                'entity_type': 'track',
                 'name': track.get('name'),
                 'artists': [
                     {'name': artist.get('name'), 'uri': artist.get('uri')}
@@ -72,15 +71,16 @@ class MusicSearchService:
                 'spotify_uri': track.get('uri')
             }
             result.append(track_data)
-        
+            
         return result
 
     def search_album(self, query: str) -> list[dict]:
         response = self.spotify.search(query, type='album')
-        albums = response.get('albums').get('items')
+        albums = response.get('albums').get('items')[:1]
         result = []
         for album in albums:
             album_data = {
+                'entity_type': 'album',
                 'uri': album.get('uri'),
                 'name': album.get('name'),
                 'artists': [
@@ -89,7 +89,7 @@ class MusicSearchService:
                 ],
                 'total_tracks': album.get('total_tracks'),
                 'cover_url': album.get('images')[0].get('url'),
-                'release_date': album.get('release_data')
+                'release_date': album.get('release_date')
                 
             }
             result.append(album_data)
@@ -101,6 +101,7 @@ class MusicSearchService:
         result = []
         for artist in artists:
             artist_data = {
+                'entity_type': 'artist',
                 'name': artist.get('name'),
                 'uri': artist.get('uri'),
                 'image': artist.get('images')[0].get('url'),
@@ -159,4 +160,44 @@ class MusicSearchService:
         top_tracks = self.spotify.artist_top_tracks(artist_uri, country='UA').get('tracks')
         result = self.detail_album_tracks(top_tracks)
         artist_data['top_tracks'] = result
+        albums = self.detail_artist_albums(artist_uri)
+        artist_data['albums'] = albums
         return artist_data
+    
+    def detail_track(self, track_uri: str) -> dict:
+        track = self.spotify.track(track_id=track_uri)
+        track_data = {
+                'name': track.get('name'),
+                'artists': [
+                    {'name': artist.get('name'), 'uri': artist.get('uri')}
+                    for artist in track.get('artists', [])
+                ],
+                'cover_url': track.get('album', {}).get('images', [{}])[0].get('url'),
+                'duration_ms': track.get('duration_ms'),
+                'spotify_uri': track.get('uri')
+            }
+        return track_data
+    
+    #returns url to listen track
+    def listen_track(self, track_uri: str, db: Session) -> str:
+        track_data = self.spotify.track(track_uri)
+        track_id = track_uri.split(':')[2]
+        track_in_db = db.query(Track).filter(Track.track_id == track_id).first()
+        if track_in_db:
+            name = track_data.get('name')
+            artist = track_data.get('artists')[0].get('name')
+            dowload_query = f'{artist} - {name}'
+            file_path = self.download_track(track_id=track_id, url=self.get_youtube_url(dowload_query))
+            try:
+                track = Track(
+                    name=dowload_query,
+                    track_id=track_id,
+                    file_path=file_path
+                )
+                db.add(track)
+                db.commit()
+            except (IntegrityError, ValueError):
+                db.rollback()
+                raise 
+        track_url = f'/tracks/media/{track_id}'
+        return track_url

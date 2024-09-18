@@ -31,5 +31,8 @@ def get_db():
 
 # tracks service vars
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MEDIA_DIR = os.path.join(BASE_DIR, 'media')
+BASE_URL = 'http://127.0.0.1:8000'
+
 CLIENT_ID = os.environ.get('CLIENT_ID')
 CLIENT_SECRET = os.environ.get('CLIENT_SECRET')

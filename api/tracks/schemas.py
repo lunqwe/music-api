@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
 
-class TrackBase(BaseModel):
-    name: str
+class SearchTrack(BaseModel):
+    tracks: dict
+    albums: dict
+    artists: dict
