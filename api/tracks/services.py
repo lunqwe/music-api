@@ -183,7 +183,7 @@ class MusicSearchService:
         track_data = self.spotify.track(track_uri)
         track_id = track_uri.split(':')[2]
         track_in_db = db.query(Track).filter(Track.track_id == track_id).first()
-        if track_in_db:
+        if not track_in_db:
             name = track_data.get('name')
             artist = track_data.get('artists')[0].get('name')
             dowload_query = f'{artist} - {name}'
