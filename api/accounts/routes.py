@@ -3,7 +3,6 @@ from fastapi import FastAPI, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
-from jwt.exceptions import InvalidTokenError
 
 from config import get_db
 from .schemas import UserBase, UserRegister, RefreshToken, UserLogin
@@ -40,10 +39,12 @@ async def login(data: UserLogin, db: Session = Depends(get_db)):
 
 
 @app.post('/logout', tags=['accounts'])
-async def logout(current_user: Annotated[User, Depends(jwt_service.get_current_user)], db: Session = Depends(get_db)):
+async def logout(current_user: Annotated[User,
+                                         Depends(jwt_service.get_current_user)],
+                 db: Session = Depends(get_db)):
     response_data = user_service.logout(user=current_user, db=db)
     return JSONResponse(response_data, status_code=status.HTTP_200_OK)
-    
+
 
 # jwt tokens test
 @app.get("/me", response_model=UserBase, tags=['accounts'])

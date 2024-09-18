@@ -29,6 +29,7 @@ def get_db():
     finally:
         db.close()
 
+
 # tracks service vars
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MEDIA_DIR = os.path.join(BASE_DIR, 'media')

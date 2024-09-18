@@ -7,12 +7,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import exists
 from psycopg2.errors import UniqueViolation
 
 import config
 from .models import User, RefreshToken
-from .schemas import UserInDB, UserLogin, UserRegister, UserRefreshTokenData, UserBase
+from .schemas import UserInDB, UserLogin, UserRegister, UserRefreshTokenData
 
 
 class JWTService:
@@ -37,8 +36,8 @@ class JWTService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Credentials error: Token expired.'
-                                )
-    
+            )
+
     def check_refresh_expired(self, db: Session, token: str):
         token_in_db = db.query(RefreshToken).filter(RefreshToken.token == token).first()
         if token_in_db:
@@ -54,15 +53,16 @@ class JWTService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Credentials error: Token expired.')
-    
+
     def encode_data(self, data: dict, token_type: str) -> str:
         expire = datetime.now(timezone.utc) + (
-            timedelta(minutes=config.ACCESS_TOKEN_EXPIRES_MINUTES) 
-            if token_type == 'access' else 
+            timedelta(minutes=config.ACCESS_TOKEN_EXPIRES_MINUTES)
+            if token_type == 'access' else
             timedelta(days=config.REFRESH_TOKEN_EXPIRES_DAYS)
         )
-        
-        to_encode = {'exp': expire, **data}  # Access токен будет содержать только необходимую информацию
+
+        # Access токен будет содержать только необходимую информацию
+        to_encode = {'exp': expire, **data}
         encoded_jwt = jwt.encode(to_encode, config.SECRET_KEY, algorithm=config.ALGORITHM)
         return encoded_jwt
 
@@ -70,10 +70,10 @@ class JWTService:
         user = self.get_user(db, username=data.username)
         if not user:
             raise ValueError("User not found.")
-        
+
         token_data = {'sub': user.id}
         token = self.encode_data(token_data, token_type='refresh')
-        
+
         db_token = RefreshToken(user=user, user_id=user.id, token=token)
         db.add(db_token)
         db.commit()
@@ -85,18 +85,19 @@ class JWTService:
             user_id = data.get('sub')
             if user_id is None:
                 raise InvalidTokenError("Credentials error.")
-            
+
             user = db.query(User).get(user_id)
             if not user:
                 raise ValueError("User not found.")
-            
+
             access_token_data = {'username': user.username}
             return self.encode_data(access_token_data, token_type='access')
 
         except InvalidTokenError:
             raise InvalidTokenError("Invalid refresh token.")
 
-    def get_current_user(self, token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(config.get_db)):
+    def get_current_user(self, token: Annotated[str, Depends(
+            oauth2_scheme)], db: Session = Depends(config.get_db)):
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -111,7 +112,7 @@ class JWTService:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail='Credentials error: Token expired.'
-                    )
+                )
             username = payload.get('username')
             if username is None:
                 raise credentials_exception
@@ -123,7 +124,6 @@ class JWTService:
         if user is None:
             raise credentials_exception
         return user
-
 
 
 class UserService:
@@ -151,7 +151,8 @@ class UserService:
         )
         try:
             user = self.create_user(db, user_data)
-            refresh_token = self.jwt_service.create_refresh_token(db, data=UserRefreshTokenData(**user.__dict__))
+            refresh_token = self.jwt_service.create_refresh_token(
+                db, data=UserRefreshTokenData(**user.__dict__))
             access_token = self.jwt_service.create_access_token(refresh_token.token)
             print(access_token)
             db.commit()
@@ -159,7 +160,7 @@ class UserService:
 
         except (IntegrityError, ValueError, InvalidTokenError):
             db.rollback()
-            raise 
+            raise
 
         except Exception as e:
             db.rollback()
@@ -184,13 +185,13 @@ class UserService:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail='Wrong password.'
-                    )
+                )
         else:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f'Account with username {data.username} is not found'
             )
-    
+
     def logout(self, user, db: Session):
         if len(user.tokens) > 0:
             db.delete(user.tokens[0])
@@ -199,6 +200,5 @@ class UserService:
         else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'Could not validate credentials',
+                detail='Could not validate credentials',
             )
-        
