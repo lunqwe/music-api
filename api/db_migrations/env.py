@@ -6,13 +6,14 @@ from sqlalchemy import pool
 from alembic import context
 
 import config as app_conf
-import os
-
+from dotenv import load_dotenv
+load_dotenv()
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
 section = config.config_ini_section
-config.set_section_option(section, 'SQLALCHEMY_DATABASE_URL', os.environ.get('SQLALCHEMY_DATABASE_URL'))
+config.set_section_option(section, 'SQLALCHEMY_DATABASE_URL', app_conf.SQLALCHEMY_DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -24,6 +25,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from accounts.models import User, RefreshToken
+from tracks.models import Track
 target_metadata = app_conf.Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -56,21 +58,27 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def run_migrations_online():
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode.
+
+    In this scenario we need to create an Engine
+    and associate a connection with the context.
+
+    """
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
+            connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
